@@ -380,7 +380,7 @@ int srslte_npss_generate(cf_t *signal, uint32_t N_id_2) {
 
 /** 36.211 10.3 section 6.11.1.2
  */
-void srslte_npss_put_slot(cf_t *npss_signal, cf_t *slot, uint32_t nof_prb, srslte_cp_t cp) {
+void srslte_npss_put_slot(cf_t *npss_signal, cf_t *slot, uint32_t nof_prb = 1, srslte_cp_t cp) {
   int k;
   k = (SRSLTE_CP_NSYMB(cp) - 1) * nof_prb * SRSLTE_NRE + nof_prb * SRSLTE_NRE / 2 - 31;
   memset(&slot[k - 5], 0, 5 * sizeof(cf_t));
@@ -413,7 +413,7 @@ void srslte_npss_set_ema_alpha(srslte_npss_t *q, float alpha) {
   q->ema_alpha = alpha;
 }
 
-float compute_peak_sidelobe(srslte_pss_t *q, uint32_t corr_peak_pos, uint32_t conv_output_len)
+float compute_peak_sidelobe(srslte_npss_t *q, uint32_t corr_peak_pos, uint32_t conv_output_len)
 {
   // Find end of peak lobe to the right
   int pl_ub = corr_peak_pos+1;
@@ -478,17 +478,17 @@ int srslte_npss_find_npss(srslte_npss_t *q, const cf_t *input, float *corr_peak_
       memcpy(q->tmp_input, input, (q->frame_size * q->decimate) * sizeof(cf_t));
       if(q->decimate > 1) {
         srslte_filt_decim_cc_execute(&(q->filter), q->tmp_input, q->filter.downsampled_input, q->filter.filter_output , (q->frame_size * q->decimate));
-        conv_output_len = srslte_conv_fft_cc_run_opt(&q->conv_fft, q->filter.filter_output,q->pss_signal_freq_full[q->N_id_2], q->conv_output);
+        conv_output_len = srslte_conv_fft_cc_run_opt(&q->conv_fft, q->filter.filter_output,q->npss_signal_freq_full[q->N_id_2], q->conv_output);
       } else {
-        conv_output_len = srslte_conv_fft_cc_run_opt(&q->conv_fft, q->tmp_input, q->pss_signal_freq_full[q->N_id_2], q->conv_output);
+        conv_output_len = srslte_conv_fft_cc_run_opt(&q->conv_fft, q->tmp_input, q->npss_signal_freq_full[q->N_id_2], q->conv_output);
       }
 
     #else
-      conv_output_len = srslte_conv_cc(input, q->pss_signal_time[q->N_id_2], q->conv_output, q->frame_size, q->fft_size);
+      conv_output_len = srslte_conv_cc(input, q->npss_signal_time[q->N_id_2], q->conv_output, q->frame_size, q->fft_size);
     #endif
     } else {
       for (int i=0;i<q->frame_size;i++) {
-        q->conv_output[i] = srslte_vec_dot_prod_ccc(q->pss_signal_time[q->N_id_2], &input[i], q->fft_size);
+        q->conv_output[i] = srslte_vec_dot_prod_ccc(q->npss_signal_time[q->N_id_2], &input[i], q->fft_size);
       }
       conv_output_len = q->frame_size;
     }
@@ -549,7 +549,7 @@ int srslte_npss_chest(srslte_npss_t *q, const cf_t *input, cf_t ce[SRSLTE_NPSS_L
   {
 
     if (!srslte_N_id_2_isvalid(q->N_id_2)) {
-      fprintf(stderr, "Error finding PSS peak, Must set N_id_2 first\n");
+      fprintf(stderr, "Error finding NPSS peak, Must set N_id_2 first\n");
       return SRSLTE_ERROR;
     }
 
@@ -567,59 +567,59 @@ int srslte_npss_chest(srslte_npss_t *q, const cf_t *input, cf_t ce[SRSLTE_NPSS_L
 /* input points to beginning of last OFDM symbol of slot 0 of subframe 0 or 5
  * It must be called after calling srslte_pss_cfo_compute() with filter enabled
  */
-void srslte_pss_sic(srslte_pss_t *q, cf_t *input) {
+void srslte_npss_sic(srslte_npss_t *q, cf_t *input) {
   if (q->chest_on_filter) {
 
     bzero(q->tmp_fft, sizeof(cf_t)*q->fft_size);
 
-    // Pass transmitted PSS sequence through the channel
-    srslte_vec_prod_ccc(q->pss_signal_freq[q->N_id_2], q->tmp_ce, &q->tmp_fft[(q->fft_size-SRSLTE_PSS_LEN)/2], SRSLTE_PSS_LEN);
+    // Pass transmitted NPSS sequence through the channel
+    srslte_vec_prod_ccc(q->npss_signal_freq[q->N_id_2], q->tmp_ce, &q->tmp_fft[(q->fft_size-SRSLTE_NPSS_LEN)/2], SRSLTE_NPSS_LEN);
 
-    // Get time-domain version of the received PSS
+    // Get time-domain version of the received NPSS
     srslte_dft_run_c(&q->idftp_input, q->tmp_fft, q->tmp_fft2);
 
-    // Substract received PSS from this N_id_2 from the input signal
+    // Substract received NPSS from this N_id_2 from the input signal
     srslte_vec_sc_prod_cfc(q->tmp_fft2, 1.0/q->fft_size, q->tmp_fft2, q->fft_size);
     srslte_vec_sub_ccc(input, q->tmp_fft2, input, q->fft_size);
 
   } else {
-    fprintf(stderr, "Error calling srslte_pss_sic(): need to enable channel estimation on filtering\n");
+    fprintf(stderr, "Error calling srslte_npss_sic(): need to enable channel estimation on filtering\n");
   }
 }
 
 // Frequency-domain filtering of the central 64 sub-carriers
-void srslte_pss_filter(srslte_pss_t *q, const cf_t *input, cf_t *output)
+void srslte_npss_filter(srslte_npss_t *q, const cf_t *input, cf_t *output)
 {
   srslte_dft_run_c(&q->dftp_input, input, q->tmp_fft);
 
-  memcpy(&q->tmp_fft2[q->fft_size/2-SRSLTE_PSS_LEN/2],
-         &q->tmp_fft[q->fft_size/2-SRSLTE_PSS_LEN/2],
-         sizeof(cf_t)*SRSLTE_PSS_LEN);
+  memcpy(&q->tmp_fft2[q->fft_size/2-SRSLTE_NPSS_LEN/2],
+         &q->tmp_fft[q->fft_size/2-SRSLTE_NPSS_LEN/2],
+         sizeof(cf_t)*SRSLTE_NPSS_LEN);
 
   if (q->chest_on_filter) {
-    srslte_vec_prod_conj_ccc(&q->tmp_fft[(q->fft_size-SRSLTE_PSS_LEN)/2], q->pss_signal_freq[q->N_id_2], q->tmp_ce, SRSLTE_PSS_LEN);
+    srslte_vec_prod_conj_ccc(&q->tmp_fft[(q->fft_size-SRSLTE_NPSS_LEN)/2], q->npss_signal_freq[q->N_id_2], q->tmp_ce, SRSLTE_NPSS_LEN);
   }
 
   srslte_dft_run_c(&q->idftp_input, q->tmp_fft2, output);
 }
 
-/* Returns the CFO estimation given a PSS received sequence
+/* Returns the CFO estimation given a NPSS received sequence
  *
  * Source: An Efﬁcient CFO Estimation Algorithm for the Downlink of 3GPP-LTE
  *       Feng Wang and Yu Zhu
  */
-float srslte_pss_cfo_compute(srslte_pss_t* q, const cf_t *pss_recv) {
+float srslte_npss_cfo_compute(srslte_npss_t* q, const cf_t *npss_recv) {
   cf_t y0, y1;
 
-  const cf_t *pss_ptr = pss_recv;
+  const cf_t *npss_ptr = npss_recv;
 
-  if (q->filter_pss_enable) {
-    srslte_pss_filter(q, pss_recv, q->tmp_fft);
-    pss_ptr = (const cf_t*) q->tmp_fft;
+  if (q->filter_npss_enable) {
+    srslte_npss_filter(q, npss_recv, q->tmp_fft);
+    npss_ptr = (const cf_t*) q->tmp_fft;
   }
 
-  y0 = srslte_vec_dot_prod_ccc(q->pss_signal_time[q->N_id_2], pss_ptr, q->fft_size/2);
-  y1 = srslte_vec_dot_prod_ccc(&q->pss_signal_time[q->N_id_2][q->fft_size/2], &pss_ptr[q->fft_size/2], q->fft_size/2);
+  y0 = srslte_vec_dot_prod_ccc(q->npss_signal_time[q->N_id_2], npss_ptr, q->fft_size/2);
+  y1 = srslte_vec_dot_prod_ccc(&q->npss_signal_time[q->N_id_2][q->fft_size/2], &npss_ptr[q->fft_size/2], q->fft_size/2);
   return carg(conjf(y0) * y1)/M_PI;
 }
 

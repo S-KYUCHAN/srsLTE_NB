@@ -42,8 +42,8 @@
  *  Reference:    3GPP TS 36.211 version 10.0.0 Release 10 Sec. 6.11.1
  *****************************************************************************/
 
-#ifndef SRSLTE_PSS_H
-#define SRSLTE_PSS_H
+#ifndef SRSLTE_NPSS_H
+#define SRSLTE_NPSS_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -61,9 +61,9 @@
 
 /* NPSS processing options */
 
-#define SRSLTE_PSS_ACCUMULATE_ABS   // If enabled, accumulates the correlation absolute value on consecutive calls to srslte_pss_find_pss
+#define SRSLTE_NPSS_ACCUMULATE_ABS   // If enabled, accumulates the correlation absolute value on consecutive calls to srslte_pss_find_pss
 
-#define SRSLTE_PSS_RETURN_PSR  // If enabled returns peak to side-lobe ratio, otherwise returns absolute peak value
+#define SRSLTE_NPSS_RETURN_PSR  // If enabled returns peak to side-lobe ratio, otherwise returns absolute peak value
 
 
 /* Low-level API */
@@ -82,12 +82,12 @@ typedef struct SRSLTE_API {
   uint32_t frame_size;
   uint32_t N_id_2;
   uint32_t fft_size;
-  cf_t *pss_signal_freq_full[3];
+  cf_t *npss_signal_freq_full[3];
 
-  cf_t *pss_signal_time[3];
-  cf_t *pss_signal_time_scale[3];
+  cf_t *npss_signal_time[3];
+  cf_t *npss_signal_time_scale[3];
 
-  cf_t pss_signal_freq[3][SRSLTE_NPSS_LEN]; // One sequence for each N_id_2
+  cf_t npss_signal_freq[3][SRSLTE_NPSS_LEN]; // One sequence for each N_id_2
   cf_t *tmp_input;
   cf_t *conv_output;
   float *conv_output_abs;
@@ -110,70 +110,70 @@ typedef struct SRSLTE_API {
 typedef enum { NPSS_TX, NPSS_RX } npss_direction_t;
 
 /* Basic functionality */
-SRSLTE_API int srslte_pss_init_fft(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_init_fft(srslte_npss_t *q,
                                          uint32_t frame_size, 
                                          uint32_t fft_size);
 
-SRSLTE_API int srslte_pss_init_fft_offset(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_init_fft_offset(srslte_npss_t *q,
                                                 uint32_t frame_size, 
                                                 uint32_t fft_size, 
                                                 int cfo_i);
 
-SRSLTE_API int srslte_pss_init_fft_offset_decim(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_init_fft_offset_decim(srslte_npss_t *q,
                                                 uint32_t frame_size, 
                                                 uint32_t fft_size, 
                                                 int cfo_i,
                                                 int decimate);
 
-SRSLTE_API int srslte_pss_resize(srslte_pss_t *q, uint32_t frame_size,
+SRSLTE_API int srslte_npss_resize(srslte_npss_t *q, uint32_t frame_size,
                                        uint32_t fft_size,
                                        int offset);
 
-SRSLTE_API int srslte_pss_init(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_init(srslte_npss_t *q,
                                      uint32_t frame_size);
 
-SRSLTE_API void srslte_pss_free(srslte_pss_t *q);
+SRSLTE_API void srslte_npss_free(srslte_npss_t *q);
 
-SRSLTE_API void srslte_pss_reset(srslte_pss_t *q);
+SRSLTE_API void srslte_npss_reset(srslte_npss_t *q);
 
-SRSLTE_API void srslte_pss_filter_enable(srslte_pss_t *q,
+SRSLTE_API void srslte_npss_filter_enable(srslte_npss_t *q,
                                                bool enable);
 
-SRSLTE_API void srslte_pss_sic(srslte_pss_t *q,
+SRSLTE_API void srslte_npss_sic(srslte_npss_t *q,
                                      cf_t *input);
 
-SRSLTE_API void srslte_pss_filter(srslte_pss_t *q,
+SRSLTE_API void srslte_npss_filter(srslte_npss_t *q,
                                         const cf_t *input,
                                         cf_t *output);
 
-SRSLTE_API int srslte_pss_generate(cf_t *signal, 
+SRSLTE_API int srslte_npss_generate(cf_t *signal, 
                                    uint32_t N_id_2);
 
-SRSLTE_API void srslte_pss_get_slot(cf_t *slot, 
-                                    cf_t *pss_signal, 
+SRSLTE_API void srslte_npss_get_slot(cf_t *slot, 
+                                    cf_t *npss_signal, 
                                     uint32_t nof_prb, 
                                     srslte_cp_t cp); 
 
-SRSLTE_API void srslte_pss_put_slot(cf_t *pss_signal, 
+SRSLTE_API void srslte_npss_put_slot(cf_t *npss_signal, 
                                     cf_t *slot, 
                                     uint32_t nof_prb, 
                                     srslte_cp_t cp);
 
-SRSLTE_API void srslte_pss_set_ema_alpha(srslte_pss_t *q,
+SRSLTE_API void srslte_npss_set_ema_alpha(srslte_npss_t *q,
                                                float alpha); 
 
-SRSLTE_API int srslte_pss_set_N_id_2(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_set_N_id_2(srslte_npss_t *q,
                                            uint32_t N_id_2);
 
-SRSLTE_API int srslte_pss_find_pss(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_find_npss(srslte_npss_t *q,
                                          const cf_t *input,
                                          float *corr_peak_value);
 
-SRSLTE_API int srslte_pss_chest(srslte_pss_t *q,
+SRSLTE_API int srslte_npss_chest(srslte_npss_t *q,
                                       const cf_t *input,
-                                      cf_t ce[SRSLTE_PSS_LEN]); 
+                                      cf_t ce[SRSLTE_NPSS_LEN]); 
 
-SRSLTE_API float srslte_pss_cfo_compute(srslte_pss_t* q,
-                                              const cf_t *pss_recv);
+SRSLTE_API float srslte_npss_cfo_compute(srslte_npss_t* q,
+                                              const cf_t *npss_recv);
 
 #endif // SRSLTE_PSS_H

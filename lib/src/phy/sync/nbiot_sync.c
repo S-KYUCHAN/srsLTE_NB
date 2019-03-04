@@ -42,7 +42,7 @@
 
 #define DEFAULT_CFO_TOL 0.0 // Hz
 
-#define MAX_CFO_PSS_OFFSET 7000
+#define MAX_CFO_NPSS_OFFSET 7000
 
 static bool fft_size_isvalid(uint32_t fft_size) {
   if (fft_size >= SRSLTE_SYNC_FFT_SZ_MIN && fft_size <= SRSLTE_SYNC_FFT_SZ_MAX && (fft_size%64) == 0) {
@@ -71,14 +71,14 @@ int srslte_sync_init_decim(srslte_sync_t *q, uint32_t frame_size, uint32_t max_o
     q->N_id_1 = 1000;
 
     q->cfo_ema_alpha = CFO_EMA_ALPHA;
-    q->sss_alg = SSS_FULL;
+    q->nsss_alg = SSS_FULL;
 
     q->detect_cp       = true;
-    q->sss_en          = true;
-    q->cfo_pss_enable  = false;
+    q->nsss_en          = true;
+    q->cfo_npss_enable  = false;
     q->cfo_cp_enable   = false;
     q->cfo_i_initiated = false;
-    q->pss_filtering_enabled = false;
+    q->npss_filtering_enabled = false;
 
     q->cfo_cp_nsymbols = 3;
     q->fft_size = fft_size;
@@ -121,12 +121,12 @@ int srslte_sync_init_decim(srslte_sync_t *q, uint32_t frame_size, uint32_t max_o
       decimate = 1;
     }
 
-    if (srslte_pss_init_fft_offset_decim(&q->pss, max_offset, fft_size, 0, decimate)) {
-      fprintf(stderr, "Error initializing PSS object\n");
+    if (srslte_npss_init_fft_offset_decim(&q->npss, max_offset, fft_size, 0, decimate)) {
+      fprintf(stderr, "Error initializing NPSS object\n");
       goto clean_exit;
     }
-    if (srslte_sss_init(&q->sss, fft_size)) {
-      fprintf(stderr, "Error initializing SSS object\n");
+    if (srslte_nsss_init(&q->nsss, fft_size)) {
+      fprintf(stderr, "Error initializing NSSS object\n");
       goto clean_exit;
     }
 
@@ -152,8 +152,8 @@ clean_exit:
 void srslte_sync_free(srslte_sync_t *q)
 {
   if (q) {
-    srslte_pss_free(&q->pss);
-    srslte_sss_free(&q->sss);
+    srslte_npss_free(&q->npss);
+    srslte_nsss_free(&q->nsss);
     srslte_cfo_free(&q->cfo_corr_frame);
     srslte_cfo_free(&q->cfo_corr_symbol);
     srslte_cp_synch_free(&q->cp_synch);
@@ -162,7 +162,7 @@ void srslte_sync_free(srslte_sync_t *q)
       if (q->cfo_i_corr[i]) {
         free(q->cfo_i_corr[i]);
       }
-      srslte_pss_free(&q->pss_i[i]);
+      srslte_npss_free(&q->npss_i[i]);
     }
 
     if (q->temp) {
@@ -187,12 +187,12 @@ int srslte_sync_resize(srslte_sync_t *q, uint32_t frame_size, uint32_t max_offse
     q->frame_size = frame_size;
     q->max_offset = max_offset;
 
-    if (srslte_pss_resize(&q->pss, q->max_offset, q->fft_size, 0)) {
-      fprintf(stderr, "Error resizing PSS object\n");
+    if (srslte_npss_resize(&q->npss, q->max_offset, q->fft_size, 0)) {
+      fprintf(stderr, "Error resizing NPSS object\n");
       return SRSLTE_ERROR;
     }
-    if (srslte_sss_resize(&q->sss, q->fft_size)) {
-      fprintf(stderr, "Error resizing SSS object\n");
+    if (srslte_nsss_resize(&q->nsss, q->fft_size)) {
+      fprintf(stderr, "Error resizing NSSS object\n");
       return SRSLTE_ERROR;
     }
 
@@ -214,8 +214,8 @@ int srslte_sync_resize(srslte_sync_t *q, uint32_t frame_size, uint32_t max_offse
     if (q->cfo_i_initiated) {
       for (int i=0;i<2;i++) {
         int offset=(i==0)?-1:1;
-        if (srslte_pss_resize(&q->pss_i[i], q->max_offset, q->fft_size, offset)) {
-          fprintf(stderr, "Error initializing PSS object\n");
+        if (srslte_npss_resize(&q->npss_i[i], q->max_offset, q->fft_size, offset)) {
+          fprintf(stderr, "Error initializing NPSS object\n");
         }
         for (int t=0;t<q->frame_size;t++) {
           q->cfo_i_corr[i][t] = cexpf(-2*_Complex_I*M_PI*offset*(float) t/q->fft_size);
@@ -250,7 +250,7 @@ void srslte_sync_sss_en(srslte_sync_t *q, bool enabled) {
   q->sss_en = enabled;
 }
 
-bool srslte_sync_sss_detected(srslte_sync_t *q) {
+bool srslte_sync_nsss_detected(srslte_sync_t *q) {
   return srslte_N_id_1_isvalid(q->N_id_1);
 }
 
@@ -277,23 +277,23 @@ uint32_t srslte_sync_get_sf_idx(srslte_sync_t *q) {
 }
 
 float srslte_sync_get_cfo(srslte_sync_t *q) {
-  return q->cfo_cp_mean + q->cfo_pss_mean + q->cfo_i_value;
+  return q->cfo_cp_mean + q->cfo_npss_mean + q->cfo_i_value;
 }
 
 void srslte_sync_cfo_reset(srslte_sync_t *q)
 {
   q->cfo_cp_mean    = 0;
   q->cfo_cp_is_set  = false;
-  q->cfo_pss_mean   = 0;
-  q->cfo_pss_is_set = false;
+  q->cfo_npss_mean   = 0;
+  q->cfo_npss_is_set = false;
 }
 
 void srslte_sync_copy_cfo(srslte_sync_t *q, srslte_sync_t *src_obj) {
   q->cfo_cp_mean    = src_obj->cfo_cp_mean;
-  q->cfo_pss_mean   = src_obj->cfo_pss_mean;
+  q->cfo_npss_mean   = src_obj->cfo_npss_mean;
   q->cfo_i_value    = src_obj->cfo_i_value;
   q->cfo_cp_is_set  = false;
-  q->cfo_pss_is_set = false;
+  q->cfo_npss_is_set = false;
 }
 
 void srslte_sync_set_cfo_i_enable(srslte_sync_t *q, bool enable) {
@@ -301,8 +301,8 @@ void srslte_sync_set_cfo_i_enable(srslte_sync_t *q, bool enable) {
   if (q->cfo_i_enable  && !q->cfo_i_initiated) {
     for (int i=0;i<2;i++) {
       int offset=(i==0)?-1:1;
-      if (srslte_pss_init_fft_offset(&q->pss_i[i], q->max_offset, q->fft_size, offset)) {
-        fprintf(stderr, "Error initializing PSS object\n");
+      if (srslte_npss_init_fft_offset(&q->npss_i[i], q->max_offset, q->fft_size, offset)) {
+        fprintf(stderr, "Error initializing NPSS object\n");
       }
       for (int t=0;t<q->frame_size;t++) {
         q->cfo_i_corr[i][t] = cexpf(-2*_Complex_I*M_PI*offset*(float) t/q->fft_size);
@@ -315,13 +315,13 @@ void srslte_sync_set_cfo_i_enable(srslte_sync_t *q, bool enable) {
 void srslte_sync_set_sss_eq_enable(srslte_sync_t *q, bool enable) {
   q->sss_channel_equalize  = enable;
   if (enable) {
-    q->pss_filtering_enabled = true;
-    q->pss.chest_on_filter   = true;
+    q->npss_filtering_enabled = true;
+    q->npss.chest_on_filter   = true;
   }
 }
 
-void srslte_sync_set_pss_filt_enable(srslte_sync_t *q, bool enable) {
-  q->pss_filtering_enabled = enable;
+void srslte_sync_set_npss_filt_enable(srslte_sync_t *q, bool enable) {
+  q->npss_filtering_enabled = enable;
 }
 
 void srslte_sync_set_cfo_cp_enable(srslte_sync_t *q, bool enable, uint32_t nof_symbols) {
@@ -329,8 +329,8 @@ void srslte_sync_set_cfo_cp_enable(srslte_sync_t *q, bool enable, uint32_t nof_s
   q->cfo_cp_nsymbols = nof_symbols;
 }
 
-void srslte_sync_set_cfo_pss_enable(srslte_sync_t *q, bool enable) {
-  q->cfo_pss_enable = enable;
+void srslte_sync_set_cfo_npss_enable(srslte_sync_t *q, bool enable) {
+  q->cfo_npss_enable = enable;
 }
 
 void srslte_sync_set_cfo_ema_alpha(srslte_sync_t *q, float alpha) {
@@ -347,7 +347,7 @@ void srslte_sync_cp_en(srslte_sync_t *q, bool enabled) {
 
 void srslte_sync_set_em_alpha(srslte_sync_t *q, float alpha)
 {
-  srslte_pss_set_ema_alpha(&q->pss, alpha);
+  srslte_npss_set_ema_alpha(&q->npss, alpha);
 }
 
 srslte_cp_t srslte_sync_get_cp(srslte_sync_t *q)
@@ -365,9 +365,9 @@ void srslte_sync_set_cp(srslte_sync_t *q, srslte_cp_t cp)
   }
 }
 
-void srslte_sync_set_sss_algorithm(srslte_sync_t *q, sss_alg_t alg)
+void srslte_sync_set_nsss_algorithm(srslte_sync_t *q, nsss_alg_t alg)
 {
-  q->sss_alg = alg; 
+  q->nsss_alg = alg; 
 }
 
 /* CP detection algorithm taken from: 
@@ -434,13 +434,14 @@ srslte_cp_t srslte_sync_detect_cp(srslte_sync_t *q, const cf_t *input, uint32_t 
 /* Returns 1 if the SSS is found, 0 if not and -1 if there is not enough space 
  * to correlate
  */
-int sync_sss_symbol(srslte_sync_t *q, const cf_t *input)
+//Todo
+int sync_nsss_symbol(srslte_sync_t *q, const cf_t *input)
 {
   int ret;
 
-  srslte_sss_set_N_id_2(&q->sss, q->N_id_2);
+  srslte_nsss_set_N_id_2(&q->nsss, q->N_id_2);
 
-  switch(q->sss_alg) {
+  switch(q->nsss_alg) {
     case SSS_DIFF:
       srslte_sss_m0m1_diff(&q->sss, input, &q->m0, &q->m0_value, &q->m1, &q->m1_value);
       break;

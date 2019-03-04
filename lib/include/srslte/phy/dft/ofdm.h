@@ -48,13 +48,13 @@
 typedef struct SRSLTE_API{
   srslte_dft_plan_t fft_plan;
   srslte_dft_plan_t fft_plan_sf[2];
-  uint32_t max_prb;
-  uint32_t nof_symbols;
+  uint32_t max_prb;			//maximum physical resource block
+  uint32_t nof_symbols;			//number of symbols
   uint32_t symbol_sz;
-  uint32_t nof_guards;
-  uint32_t nof_re;
+  uint32_t nof_guards;			//number of guards
+  uint32_t nof_re;			//number of resource elements
   uint32_t slot_sz;
-  uint32_t sf_sz;
+  uint32_t sf_sz;			
   srslte_cp_t cp;
   cf_t *tmp; // for removing zero padding
   cf_t *in_buffer;
@@ -115,7 +115,7 @@ SRSLTE_API void srslte_ofdm_rx_slot(srslte_ofdm_t *q,
 
 SRSLTE_API void srslte_ofdm_rx_slot_ng(srslte_ofdm_t *q,
                                       cf_t *input,
-                                       cf_t *output);
+                                      cf_t *output);
 
 SRSLTE_API void srslte_ofdm_rx_sf(srslte_ofdm_t *q);
 

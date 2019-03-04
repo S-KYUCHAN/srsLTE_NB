@@ -49,7 +49,7 @@
 #include "srslte/phy/resampling/interp.h"
 #include "srslte/phy/ch_estimation/refsignal_dl.h"
 #include "srslte/phy/common/phy_common.h"
-#include "srslte/phy/sync/pss.h"
+#include "srslte/phy/sync/npss.h"
 
 
 typedef enum {
@@ -94,9 +94,9 @@ typedef struct {
   uint32_t cfo_estimate_sf_mask;
 
   /* Use PSS for noise estimation in LS linear interpolation mode */
-  cf_t pss_signal[SRSLTE_PSS_LEN];
-  cf_t tmp_pss[SRSLTE_PSS_LEN];
-  cf_t tmp_pss_noisy[SRSLTE_PSS_LEN];
+  cf_t npss_signal[SRSLTE_NPSS_LEN];
+  cf_t tmp_npss[SRSLTE_NPSS_LEN];
+  cf_t tmp_npss_noisy[SRSLTE_NPSS_LEN];
   
   srslte_chest_dl_noise_alg_t noise_alg; 
   int last_nof_antennas;

@@ -49,8 +49,8 @@
 #include <math.h>
 
 #include "srslte/config.h"
-#include "srslte/phy/sync/pss.h"
-#include "srslte/phy/sync/sss.h"
+#include "srslte/phy/sync/npss.h"
+#include "srslte/phy/sync/nsss.h"
 #include "srslte/phy/sync/cfo.h"
 #include "srslte/phy/sync/cp.h"
 
@@ -60,9 +60,9 @@
 typedef enum {SSS_DIFF=0, SSS_PARTIAL_3=2, SSS_FULL=1} sss_alg_t; 
 
 typedef struct SRSLTE_API {
-  srslte_pss_t pss;
-  srslte_pss_t pss_i[2];
-  srslte_sss_t sss;
+  srslte_npss_t npss;
+  srslte_npss_t npss_i[2];
+  srslte_nsss_t nsss;
   srslte_cp_synch_t cp_synch;
   cf_t *cfo_i_corr[2];
   int decimate;
@@ -77,9 +77,9 @@ typedef struct SRSLTE_API {
   uint32_t nof_symbols;
   uint32_t cp_len;
   float current_cfo_tol;
-  sss_alg_t sss_alg; 
+  sss_alg_t nsss_alg; 
   bool detect_cp;
-  bool sss_en;
+  bool nsss_en;
   srslte_cp_t cp;
   uint32_t m0;
   uint32_t m1;
@@ -94,16 +94,16 @@ typedef struct SRSLTE_API {
 
   // variables for various CFO estimation methods
   bool cfo_cp_enable;
-  bool cfo_pss_enable;
+  bool cfo_npss_enable;
   bool cfo_i_enable;
 
   bool cfo_cp_is_set;
-  bool cfo_pss_is_set;
+  bool cfo_npss_is_set;
   bool cfo_i_initiated;
 
   float cfo_cp_mean;
-  float cfo_pss;
-  float cfo_pss_mean;
+  float cfo_npss;
+  float cfo_npss_mean;
   int   cfo_i_value;
 
   float cfo_ema_alpha;
@@ -114,9 +114,9 @@ typedef struct SRSLTE_API {
   srslte_cfo_t cfo_corr_symbol;
 
   bool sss_channel_equalize;
-  bool pss_filtering_enabled;
-  cf_t sss_filt[SRSLTE_SYMBOL_SZ_MAX];
-  cf_t pss_filt[SRSLTE_SYMBOL_SZ_MAX];
+  bool npss_filtering_enabled;
+  cf_t nsss_filt[SRSLTE_SYMBOL_SZ_MAX];
+  cf_t npss_filt[SRSLTE_SYMBOL_SZ_MAX];
 
 }srslte_sync_t;
 
@@ -174,7 +174,7 @@ SRSLTE_API float srslte_sync_get_peak_value(srslte_sync_t *q);
 SRSLTE_API void srslte_sync_set_sss_algorithm(srslte_sync_t *q, 
                                               sss_alg_t alg); 
 
-/* Sets PSS exponential averaging alpha weight */
+/* Sets NPSS exponential averaging alpha weight */
 SRSLTE_API void srslte_sync_set_em_alpha(srslte_sync_t *q, 
                                          float alpha);
 
@@ -186,10 +186,10 @@ SRSLTE_API int srslte_sync_set_N_id_2(srslte_sync_t *q,
 SRSLTE_API int srslte_sync_get_cell_id(srslte_sync_t *q);
 
 /* Enables/disables filtering of the central PRBs before PSS CFO estimation or SSS correlation*/
-SRSLTE_API void srslte_sync_set_pss_filt_enable(srslte_sync_t *q,
+SRSLTE_API void srslte_sync_set_npss_filt_enable(srslte_sync_t *q,
                                                 bool enable);
 
-SRSLTE_API void srslte_sync_set_sss_eq_enable(srslte_sync_t *q,
+SRSLTE_API void srslte_sync_set_nsss_eq_enable(srslte_sync_t *q,
                                               bool enable);
 
 /* Gets the CFO estimation from the last call to synch_run() */
@@ -209,7 +209,7 @@ SRSLTE_API void srslte_sync_set_cfo_cp_enable(srslte_sync_t *q,
                                               bool enable,
                                               uint32_t nof_symbols);
 
-SRSLTE_API void srslte_sync_set_cfo_pss_enable(srslte_sync_t *q,
+SRSLTE_API void srslte_sync_set_cfo_npss_enable(srslte_sync_t *q,
                                                bool enable);
 
 /* Sets CFO correctors tolerance (in Hz) */
@@ -229,12 +229,12 @@ SRSLTE_API void srslte_sync_set_cp(srslte_sync_t *q,
                                    srslte_cp_t cp);
 
 /* Enables/Disables SSS detection  */
-SRSLTE_API void srslte_sync_sss_en(srslte_sync_t *q, 
+SRSLTE_API void srslte_sync_nsss_en(srslte_sync_t *q, 
                                    bool enabled);
 
-SRSLTE_API srslte_pss_t* srslte_sync_get_cur_pss_obj(srslte_sync_t *q);
+SRSLTE_API srslte_npss_t* srslte_sync_get_cur_npss_obj(srslte_sync_t *q);
 
-SRSLTE_API bool srslte_sync_sss_detected(srslte_sync_t *q);
+SRSLTE_API bool srslte_sync_nsss_detected(srslte_sync_t *q);
 
 /* Enables/Disables CP detection  */
 SRSLTE_API void srslte_sync_cp_en(srslte_sync_t *q, 

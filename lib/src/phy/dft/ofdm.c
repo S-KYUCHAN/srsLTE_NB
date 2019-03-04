@@ -49,10 +49,10 @@ int srslte_ofdm_init_mbsfn_(srslte_ofdm_t *q, srslte_cp_t cp, cf_t *in_buffer, c
   /* Set OFDM object attributes */
   q->symbol_sz = (uint32_t) symbol_sz;
   q->nof_symbols = SRSLTE_CP_NSYMB(cp);
-  q->nof_symbols_mbsfn = SRSLTE_CP_NSYMB(SRSLTE_CP_EXT);
+  q->nof_symbols_mbsfn = SRSLTE_CP_NSYMB(SRSLTE_CP_EXT);		//SRSLTE_CP_NSYMB: number of symbol
   q->cp = cp;
   q->freq_shift = false;
-  q->nof_re = (uint32_t) nof_prb * SRSLTE_NRE;
+  q->nof_re = (uint32_t) nof_prb * SRSLTE_NRE;				//SRSLTE_NRE: number of resource elements = 12
   q->nof_guards = ((symbol_sz - q->nof_re) / 2);
   q->slot_sz = (uint32_t) SRSLTE_SLOT_LEN(symbol_sz);
   q->sf_sz = (uint32_t) SRSLTE_SF_LEN(symbol_sz);
